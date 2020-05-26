@@ -1,0 +1,22 @@
+version: "3.6"
+
+services:
+  tesseract:
+    #image: zhenshaw/tesseract:rpc
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tesseract-rpc
+    restart: always
+    ports:
+      - 8080:8080
+      - 8081:8081
+      - 8082:8082
+    environment:
+      - PORT=8080  # 如果rpc类型设置了all，会使用连续的三个端口
+      - SERVER=all # rpc 服务类型 可设置rpc/jsonrpc/grpc/all
+      - TOKEN=     # 指定访问token，默认空
+
+#    volumes:
+      # 内置的是eng的训练数据，如需其它，可挂载到改路径或修改Dockerfile
+#      - tessdata_path:/usr/share/tesseract-ocr/4.00/tessdata
