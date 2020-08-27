@@ -22,6 +22,12 @@ func (s *GRPCService) Recognize(ctx context.Context, req *pb.OCRRequest) (res *p
 		return
 	}
 
+	req.Data, err = RemoveBackground(req.Data)
+	if err != nil {
+		logs.Error(err)
+		return
+	}
+
 	client := gosseract.NewClient()
 	defer client.Close()
 
