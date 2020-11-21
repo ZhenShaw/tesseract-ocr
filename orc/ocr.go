@@ -1,28 +1,16 @@
-package ocr
+package orc
 
 import (
-	"context"
-	"fmt"
-	pb "github.com/ZhenShaw/tesseract-rpc/proto"
-
+	"bytes"
 	"github.com/astaxie/beego/logs"
 	"github.com/otiai10/gosseract"
+	"image"
+	"image/color"
+	"image/png"
 )
 
-type GRPCService struct {
-	Token string `json:"token"` //访问密码
-}
-
-// 实现gRPC proto定义的接口
-func (s *GRPCService) Recognize(ctx context.Context, req *pb.OCRRequest) (res *pb.OCRReply, err error) {
-
-	if req == nil || req.Token != s.Token {
-		err = fmt.Errorf("rpc unauthorized")
-		logs.Error(err)
-		return
-	}
-
-	req.Data, err = RemoveBackground(req.Data)
+func Recognize(data []byte) (res string, err error) {
+	data, err = RemoveBackground(data)
 	if err != nil {
 		logs.Error(err)
 		return
@@ -31,49 +19,60 @@ func (s *GRPCService) Recognize(ctx context.Context, req *pb.OCRRequest) (res *p
 	client := gosseract.NewClient()
 	defer client.Close()
 
-	err = client.SetImageFromBytes(req.Data)
+	err = client.SetImageFromBytes(data)
 	if err != nil {
 		logs.Error(err)
 		return
 	}
-	res = new(pb.OCRReply)
-	res.Code, err = client.Text()
+	res, err = client.Text()
 	if err != nil {
 		logs.Error(err)
 		return
 	}
-	logs.Debug("识别结果：", res.Code)
-
 	return
 }
 
-type RPCService struct {
-	Token string `json:"token"` //访问密码
-	Data  []byte `json:"data"`  //识别数据
-}
+//图片二值化处理
+func RemoveBackground(data []byte) (res []byte, err error) {
 
-// 不使用gRPC的接口，使用net/rpc或net/rpc/jsonrpc 包的方式
-func (s *RPCService) Recognize(req *RPCService, reply *string) (err error) {
-	if req == nil || req.Token != s.Token {
-		err = fmt.Errorf("rpc unauthorized")
-		logs.Error(err)
-		return
-	}
-
-	client := gosseract.NewClient()
-	defer client.Close()
-
-	err = client.SetImageFromBytes(req.Data)
+	img, err := png.Decode(bytes.NewReader(data))
 	if err != nil {
 		logs.Error(err)
 		return
 	}
-	*reply, err = client.Text()
+
+	bounds := img.Bounds()
+	// 定义一个临界值 用于二值化界限
+	var threshold uint8 = 150
+
+	// 获取图片界限：image.Bounds
+	// 获取某点像素 image.At  image.RGBAAt
+	// 设置某点像素 image.Set image.SetRGBA
+
+	imgSet := image.NewRGBA(bounds)
+
+	for x := 1; x < bounds.Max.X; x++ {
+		for y := 1; y < bounds.Max.Y; y++ {
+			oldPixel := img.At(x, y)
+			r, g, b, _ := oldPixel.RGBA()
+			nr := uint8(r)
+			ng := uint8(g)
+			nb := uint8(b)
+			if nr/3+ng/3+nb/3 <= threshold {
+				pixel := color.RGBA{R: uint8(0), G: uint8(0), B: uint8(0), A: uint8(255)}
+				imgSet.Set(x, y, pixel)
+			}
+		}
+	}
+
+	buf := bytes.Buffer{}
+
+	err = png.Encode(&buf, imgSet)
 	if err != nil {
 		logs.Error(err)
 		return
 	}
-	logs.Debug("识别结果：", *reply)
+	res = buf.Bytes()
 
 	return
 }

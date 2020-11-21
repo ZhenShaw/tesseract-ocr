@@ -9,15 +9,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	pb "github.com/ZhenShaw/tesseract-rpc/proto"
+	pb "github.com/ZhenShaw/tesseract-ocr/proto"
 	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
-	"net"
-	"net/rpc"
-	"net/rpc/jsonrpc"
+	"mime/multipart"
+	"net/http"
+	"time"
 )
 
 func main() {
@@ -27,8 +28,7 @@ func main() {
 		log.Fatal(err)
 	}
 	gRpcClient("localhost:8080", data)
-	netRpcClient("localhost:8081", data)
-	jsonRpcClient("localhost:8082", data)
+	httpClient("http://localhost:8080/ocr?token=", data)
 }
 
 func gRpcClient(addr string, reqData []byte) {
@@ -52,48 +52,45 @@ func gRpcClient(addr string, reqData []byte) {
 	fmt.Printf("grpc reply: %s\n", r.Code)
 }
 
-type Req struct {
-	Token string `json:"token"` //访问密码
-	Data  []byte `json:"data"`
-}
+func httpClient(addr string, reqData []byte) {
 
-func netRpcClient(addr string, reqData []byte) {
-	client, err := rpc.DialHTTP("tcp", addr)
+	body := new(bytes.Buffer)
+
+	writer := multipart.NewWriter(body)
+	formFile, err := writer.CreateFormFile("file", "pic.png")
 	if err != nil {
-		log.Fatalf("dial fail: %v", err)
+		log.Fatal(err)
+		return
 	}
-	defer client.Close()
-
-	req := &Req{
-		Token: "",
-		Data:  reqData,
-	}
-
-	var reply string
-	err = client.Call("RPCOcrService.Recognize", req, &reply)
+	_, _ = formFile.Write(reqData)
+	err = writer.Close()
 	if err != nil {
-		log.Fatalf("call client err:%s\n", err)
+		log.Fatal(err)
+		return
 	}
-	fmt.Printf("net/rpc reply: %s\n", reply)
-}
 
-func jsonRpcClient(addr string, reqData []byte) {
-	conn, err := net.Dial("tcp", addr)
+	req, err := http.NewRequest("POST", addr, body)
 	if err != nil {
-		log.Fatalf("dial fail: %v", err)
+		log.Fatal(err)
+		return
 	}
-	defer conn.Close()
+	//req.Header.Set("Content-Type","multipart/form-data")
+	req.Header.Add("Content-Type", writer.FormDataContentType())
 
-	client := jsonrpc.NewClient(conn)
-
-	req := &Req{
-		Token: "",
-		Data:  reqData,
+	HttpClient := &http.Client{
+		Timeout: 3 * time.Second,
 	}
-	var reply string
-	err = client.Call("JSONRPCOcrService.Recognize", req, &reply)
+	resp, err := HttpClient.Do(req)
 	if err != nil {
-		log.Fatalf("call client err:%s\n", err)
+		log.Fatal(err)
+		return
 	}
-	fmt.Printf("jsonrpc reply: %s\n", reply)
+	defer resp.Body.Close()
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	fmt.Println("http reply:", string(content))
 }

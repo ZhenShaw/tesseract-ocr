@@ -1,9 +1,9 @@
-# tesseract-rpc
+# tesseract-ocr
 
-使用rpc方式对tesseract图片识别接口进行简单暴露，供其它服务调用，镜像内只下载了eng的训练数据，支持一般英文文本或数字验证码的识别。
+使用grpc/http方式对tesseract图片识别接口进行暴露，镜像内只下载了eng的训练数据，支持一般英文文本或数字验证码的识别。
 
 
-tesseract预置的训练模型对验证码的识别准确率不高，可通过挂载目录`/usr/share/tesseract-ocr/4.00/tessdata`方式进行识别数据模型更换自己训练的模型，也可以直接修改Dockerfile文件。
+tesseract预置的训练模型对复杂验证码的识别准确率不高，可通过挂载目录`/usr/share/tesseract-ocr/4.00/tessdata`方式进行识别数据模型更换自己训练的模型，也可以直接修改Dockerfile文件。
 
 > 感谢 `github.com/otiai10/gosseract` 对tesseract api的go 语言封装
 
@@ -13,13 +13,9 @@ tesseract预置的训练模型对验证码的识别准确率不高，可通过�
 
 可用环境变量：PORT端口、SERVER服务类型、TOKEN连接秘钥
 
-- 方式一：直接启动(可选服务类型)
+- 方式一：直接启动
 ```bash
-# 可选类型
-docker run -it -p 8080:8080 -e SERVER=grpc zhenshaw/tesseract:rpc
-docker run -it -p 8080:8080 -e SERVER=rpc zhenshaw/tesseract:rpc
-docker run -it -p 8080:8080 -e SERVER=jsonrpc zhenshaw/tesseract:rpc
-docker run -it -p 8080-8082:8080-8082 -e SERVER=all zhenshaw/tesseract:rpc
+docker run -it -p 8080:8080 zhenshaw/tesseract:ocr
 ```
 
 - 方式二：编译生成镜像并启动
@@ -30,21 +26,20 @@ docker-compose up --build
 
 ### client
 
-不同类型rpc的验证码识别调用示例
-
 ```go
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	pb "github.com/ZhenShaw/tesseract-rpc/proto"
+	pb "github.com/ZhenShaw/tesseract-ocr/proto"
 	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
-	"net"
-	"net/rpc"
-	"net/rpc/jsonrpc"
+	"mime/multipart"
+	"net/http"
+	"time"
 )
 
 func main() {
@@ -54,8 +49,7 @@ func main() {
 		log.Fatal(err)
 	}
 	gRpcClient("localhost:8080", data)
-	netRpcClient("localhost:8081", data)
-	jsonRpcClient("localhost:8082", data)
+	httpClient("http://localhost:8080/ocr?token=", data)
 }
 
 func gRpcClient(addr string, reqData []byte) {
@@ -79,51 +73,47 @@ func gRpcClient(addr string, reqData []byte) {
 	fmt.Printf("grpc reply: %s\n", r.Code)
 }
 
-type Req struct {
-	Token string `json:"token"` //访问密码
-	Data  []byte `json:"data"`
+func httpClient(addr string, reqData []byte) {
+
+	body := new(bytes.Buffer)
+
+	writer := multipart.NewWriter(body)
+	formFile, err := writer.CreateFormFile("file", "pic.png")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	_, _ = formFile.Write(reqData)
+	err = writer.Close()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", addr, body)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	//req.Header.Set("Content-Type","multipart/form-data")
+	req.Header.Add("Content-Type", writer.FormDataContentType())
+
+	HttpClient := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := HttpClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	fmt.Println("http reply:", string(content))
 }
-
-func netRpcClient(addr string, reqData []byte) {
-	client, err := rpc.DialHTTP("tcp", addr)
-	if err != nil {
-		log.Fatalf("dial fail: %v", err)
-	}
-	defer client.Close()
-
-	req := &Req{
-		Token: "",
-		Data:  reqData,
-	}
-
-	var reply string
-	err = client.Call("RPCOcrService.Recognize", req, &reply)
-	if err != nil {
-		log.Fatalf("call client err:%s\n", err)
-	}
-	fmt.Printf("net/rpc reply: %s\n", reply)
-}
-
-func jsonRpcClient(addr string, reqData []byte) {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		log.Fatalf("dial fail: %v", err)
-	}
-	defer conn.Close()
-
-	client := jsonrpc.NewClient(conn)
-
-	req := &Req{
-		Token: "",
-		Data:  reqData,
-	}
-	var reply string
-	err = client.Call("JSONRPCOcrService.Recognize", req, &reply)
-	if err != nil {
-		log.Fatalf("call client err:%s\n", err)
-	}
-	fmt.Printf("jsonrpc reply: %s\n", reply)
-}
-
 
 ```

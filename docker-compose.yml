@@ -1,20 +1,17 @@
-version: "3.6"
+version: "3"
 
 services:
   tesseract:
-    #image: zhenshaw/tesseract:rpc
+    #image: zhenshaw/tesseract:ocr
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tesseract-rpc
+    container_name: tesseract-ocr
     restart: always
     ports:
       - 8080:8080
-      - 8081:8081
-      - 8082:8082
     environment:
       - PORT=8080  # 如果rpc类型设置了all，会使用连续的三个端口
-      - SERVER=all # rpc 服务类型 可设置rpc/jsonrpc/grpc/all
       - TOKEN=     # 指定访问token，默认空
 
 #    volumes:
