@@ -2,8 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/ZhenShaw/tesseract-ocr/server"
 	"os"
+
+	"github.com/zhenshaw/tesseract-ocr/server"
 )
 
 const defaultPort = "8080"

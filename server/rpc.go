@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/rpc"
 
-	"github.com/ZhenShaw/tesseract-ocr/orc"
+	"github.com/zhenshaw/tesseract-ocr/orc"
 	"github.com/astaxie/beego/logs"
 )
 

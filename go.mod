@@ -1,4 +1,4 @@
-module github.com/ZhenShaw/tesseract-ocr
+module github.com/zhenshaw/tesseract-ocr
 
 go 1.14
 

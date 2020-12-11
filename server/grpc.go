@@ -3,8 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/ZhenShaw/tesseract-ocr/orc"
-	pb "github.com/ZhenShaw/tesseract-ocr/proto"
+	"github.com/zhenshaw/tesseract-ocr/orc"
+	pb "github.com/zhenshaw/tesseract-ocr/proto"
 	"github.com/astaxie/beego/logs"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"

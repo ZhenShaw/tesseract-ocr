@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ZhenShaw/tesseract-ocr/orc"
 	"github.com/astaxie/beego/logs"
 	"github.com/gorilla/mux"
 	"github.com/soheilhy/cmux"
+	"github.com/zhenshaw/tesseract-ocr/orc"
 )
 
 var apiToken = ""

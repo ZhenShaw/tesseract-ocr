@@ -33,7 +33,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	pb "github.com/ZhenShaw/tesseract-ocr/proto"
+	pb "github.com/zhenshaw/tesseract-ocr/proto"
 	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
