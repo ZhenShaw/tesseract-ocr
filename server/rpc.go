@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/rpc"
 
-	"github.com/zhenshaw/tesseract-ocr/orc"
 	"github.com/astaxie/beego/logs"
+	"github.com/zhenshaw/tesseract-ocr/orc"
 )
 
 func NetRPCServer(ln net.Listener, token string) {

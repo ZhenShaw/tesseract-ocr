@@ -1,10 +1,11 @@
 package server
 
 import (
-	"github.com/astaxie/beego/logs"
-	"github.com/soheilhy/cmux"
 	"log"
 	"net"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/soheilhy/cmux"
 )
 
 type Srv struct {

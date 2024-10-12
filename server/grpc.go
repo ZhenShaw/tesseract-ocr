@@ -3,14 +3,15 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/zhenshaw/tesseract-ocr/orc"
-	pb "github.com/zhenshaw/tesseract-ocr/proto"
-	"github.com/astaxie/beego/logs"
-	"github.com/soheilhy/cmux"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/soheilhy/cmux"
+	"github.com/zhenshaw/tesseract-ocr/orc"
+	pb "github.com/zhenshaw/tesseract-ocr/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func GRPCServer(ln net.Listener, token string) {

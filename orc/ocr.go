@@ -2,11 +2,13 @@ package orc
 
 import (
 	"bytes"
-	"github.com/astaxie/beego/logs"
-	"github.com/otiai10/gosseract"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
+
+	"github.com/astaxie/beego/logs"
+	"github.com/otiai10/gosseract/v2"
 )
 
 func Recognize(data []byte) (res string, err error) {
@@ -18,6 +20,13 @@ func Recognize(data []byte) (res string, err error) {
 
 	client := gosseract.NewClient()
 	defer client.Close()
+
+	// 设置多种语言，例如中文和英文
+	err = client.SetLanguage("chi_sim", "eng")
+	if err != nil {
+		logs.Error("Failed to set languages for OCR:", err)
+		return
+	}
 
 	err = client.SetImageFromBytes(data)
 	if err != nil {
@@ -32,13 +41,20 @@ func Recognize(data []byte) (res string, err error) {
 	return
 }
 
-//图片二值化处理
+// 图片二值化处理
 func RemoveBackground(data []byte) (res []byte, err error) {
+	var img image.Image
+	var decodeErr error
 
-	img, err := png.Decode(bytes.NewReader(data))
-	if err != nil {
-		logs.Error(err)
-		return
+	// 尝试解码 PNG
+	img, decodeErr = png.Decode(bytes.NewReader(data))
+	if decodeErr != nil {
+		// 如果 PNG 解码失败，尝试解码 JPG
+		img, decodeErr = jpeg.Decode(bytes.NewReader(data))
+		if decodeErr != nil {
+			logs.Error("Failed to decode image as PNG or JPEG:", decodeErr)
+			return
+		}
 	}
 
 	bounds := img.Bounds()
